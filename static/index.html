@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Helios AI 聊天助手</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-light.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    html, body { background: linear-gradient(120deg, #dbeafe 0%, #f0f8ff 100%); }
+    .glass {
+      background: rgba(255,255,255,0.85);
+      box-shadow: 0 8px 32px 0 rgba(31,38,135,0.13);
+      backdrop-filter: blur(14px);
+      border-radius: 20px;
+      border: 1.5px solid rgba(180,210,255,0.22);
+    }
+    .animate-fade-in { animation: fade-in .3s ease; }
+    @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    .animate-shake { animation: shake .4s cubic-bezier(.36,.07,.19,.97) both; }
+    @keyframes shake {
+      10%, 90% { transform: translateX(-2px); }
+      20%, 80% { transform: translateX(+4px); }
+      30%, 50%, 70% { transform: translateX(-8px); }
+      40%, 60% { transform: translateX(+8px); }
+    }
+    ::-webkit-scrollbar { width: 8px; background: #e0e7ef; }
+    ::-webkit-scrollbar-thumb { background: #b2d4ff; border-radius: 100px; }
+    ::-webkit-scrollbar-thumb:hover { background: #8ac4ff; }
+    .deleteSessBtn, .renameSessBtn { transition: background .2s, color .2s; }
+    .deleteSessBtn:active, .renameSessBtn:active { background: #e0eaff; color: #2563eb; }
+    .modal-bg { background: rgba(120,180,255,0.14); }
+    .persona-card-row {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: block;
+    }
+    .persona-card-row.multiline {
+      white-space: normal;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      max-height: 2.8em;
+    }
+    #personaDetailContent {
+      max-height: 320px;
+      overflow-y: auto;
+      padding-right: 2px;
+      margin-bottom: 10px;
+    }
+    #personaList {
+      max-height: 70vh;
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: thin;
+      padding-right: 2px;
+    }
+    #personaList::-webkit-scrollbar { width: 6px; background: #e3ecfa; }
+    #personaList::-webkit-scrollbar-thumb { background: #badcff; border-radius: 8px; }
+    #personaList::-webkit-scrollbar-thumb:hover { background: #8ac4ff; }
+    .sidebar-collapsed {
+      width: 0 !important;
+      min-width: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+      overflow: hidden !important;
+      transition: width 0.3s, min-width 0.3s, padding 0.3s;
+    }
+    .sidebar-toggle-btn {
+      transition: transform 0.2s;
+    }
+    .sidebar-toggle-btn.collapsed {
+      transform: rotate(180deg);
+    }
+    @media (max-width: 900px) {
+      aside.w-80 { width: 0 !important; min-width: 0 !important; padding: 0 !important; }
+    }
+    #showSidebarBtn {
+      display: none;
+      z-index: 2000 !important;
+      position: fixed;
+      top: 24px;
+      left: 12px;
+    }
+    @media (max-width: 900px) {
+      #showSidebarBtn {
+        top: 12px;
+        left: 8px;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen font-sans text-blue-800">
+  <!-- 展开历史会话侧边栏的浮动按钮 -->
+  <button id="showSidebarBtn"
+    class="fixed top-4 left-2 z-50 bg-blue-500 text-white rounded-full shadow-lg p-2 transition hover:bg-blue-700 hidden"
+    title="展开历史会话">
+    <svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 20 20">
+      <circle cx="13" cy="13" r="9" fill="#3b82f6"/>
+      <path d="M13 7l-5 5 5 5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </button>
+  <div class="flex h-screen max-w-7xl mx-auto relative">
+    <!-- 左侧历史会话 -->
+    <aside id="sidebar" class="w-80 p-4 glass flex flex-col shadow-xl transition-all duration-300">
+      <div class="flex justify-between items-center mb-4">
+        <div class="flex items-center gap-2">
+          <h2 class="text-xl font-bold text-blue-700">历史会话</h2>
+          <!-- 折叠按钮 -->
+          <button id="toggleSidebarBtn" class="sidebar-toggle-btn ml-1 text-blue-500 hover:text-blue-700 rounded-full focus:outline-none" title="收起/展开侧边栏">
+            <svg id="toggleSidebarIcon" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 20 20">
+              <path d="M7 5l5 5-5 5"/>
+            </svg>
+          </button>
+        </div>
+        <button id="newSessionBtn" class="bg-gradient-to-r from-blue-400 to-blue-600 text-white rounded px-3 py-1 hover:scale-105 transition shadow">新建</button>
+      </div>
+      <ul id="sessionList" class="flex-1 overflow-y-auto"></ul>
+      <div class="text-xs text-blue-400 mt-2 text-center">✏️可重命名，🗑️可删除会话</div>
+    </aside>
+    <!-- 主聊天窗口 -->
+    <main class="flex-1 flex flex-col glass m-4 shadow-2xl">
+      <header class="flex items-center justify-between p-6 border-b border-blue-100">
+        <div class="flex items-center gap-3">
+          <img id="mainAiAvatar" src="/static/ai_avatar.png" class="w-10 h-10 rounded-full shadow-lg border-2 border-blue-300 bg-white" />
+          <div>
+            <h1 class="text-2xl font-bold text-blue-700 tracking-wide">Helios AI</h1>
+            <span id="currentSessionName" class="text-sm text-blue-500"></span>
+          </div>
+        </div>
+        <button id="openSettingsBtn" class="text-blue-600 text-2xl hover:text-blue-900 transition" title="人格设置">⚙️</button>
+      </header>
+      <section id="chatMessages" class="flex-1 overflow-y-auto p-8 space-y-6"></section>
+      <footer class="p-6 border-t border-blue-100 flex gap-3 bg-blue-50 rounded-b-2xl">
+        <textarea id="messageInput" class="flex-1 rounded-xl p-3 text-base resize-none bg-blue-100 text-blue-700 placeholder-blue-400 focus:bg-white focus:outline-none shadow" rows="2" placeholder="说点什么吧..."></textarea>
+        <button id="sendBtn" class="bg-gradient-to-r from-blue-400 to-blue-600 text-white rounded-xl px-6 py-2 font-bold hover:scale-105 transition shadow">发送</button>
+        <button id="terminateBtn" class="bg-gradient-to-r from-pink-400 to-pink-600 text-white rounded-xl px-6 py-2 font-bold hover:scale-105 transition shadow ml-2">终止对话</button>
+      </footer>
+    </main>
+    <!-- 右侧人格设置 -->
+    <aside id="settingsPanel" class="w-96 p-6 glass fixed right-0 top-0 h-screen hidden flex-col z-50 shadow-2xl border border-blue-100">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-blue-700">人格设置</h2>
+        <button id="addPersonaBtn" class="text-blue-600 text-2xl hover:text-blue-900 transition" title="新增人格">➕</button>
+      </div>
+      <div id="personaList" class="flex-1 grid grid-cols-1 gap-4 pr-2"></div>
+      <button id="closeSettingsBtn" class="mt-4 bg-pink-500 text-white rounded px-4 py-2 hover:bg-pink-700 transition">关闭</button>
+    </aside>
+    <!-- 人格详情弹窗 -->
+    <div id="personaDetailModal" class="fixed inset-0 flex items-center justify-center modal-bg z-50 hidden">
+      <div class="glass border border-blue-200 shadow-xl p-6 rounded-lg w-96 relative">
+        <button id="closePersonaDetailBtn" class="absolute top-2 right-2 text-xl text-blue-400 hover:text-blue-700">✖️</button>
+        <h2 class="text-lg font-bold text-blue-700 mb-4">人格详情</h2>
+        <div id="personaDetailContent"></div>
+        <button id="editPersonaBtn" class="mt-4 bg-blue-500 text-white rounded px-4 py-2 hover:bg-blue-700 transition w-full">修改人格</button>
+      </div>
+    </div>
+    <!-- 人格编辑弹窗 -->
+    <div id="personaModal" class="fixed inset-0 flex items-center justify-center modal-bg z-50 hidden">
+      <div class="glass border border-blue-200 shadow-xl p-6 rounded-lg w-96 relative">
+        <button id="closePersonaModalBtn" class="absolute top-2 right-2 text-xl text-blue-400 hover:text-blue-700">✖️</button>
+        <h2 id="personaModalTitle" class="text-lg font-bold text-blue-700 mb-4">新增/编辑人格</h2>
+        <input type="hidden" id="personaIdInput"/>
+        <div class="mb-3">
+          <label class="block text-blue-700 mb-1">头像</label>
+          <div class="flex gap-3 items-center">
+            <img id="personaAvatarPreview" src="/static/ai_avatar.png" class="w-16 h-16 rounded-full border border-blue-200 bg-white object-cover" />
+            <input id="personaAvatarInput" type="file" accept="image/*" class="block" />
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="block text-blue-700 mb-1">名称</label>
+          <input id="personaNameInput" class="w-full rounded p-2 bg-blue-100 text-blue-700 border border-blue-200" maxlength="64"/>
+        </div>
+        <div class="mb-3">
+          <label class="block text-blue-700 mb-1">人物身份</label>
+          <input id="personaIdentityInput" class="w-full rounded p-2 bg-blue-100 text-blue-700 border border-blue-200" maxlength="128"/>
+        </div>
+        <div class="mb-3">
+          <label class="block text-blue-700 mb-1">人物外貌</label>
+          <textarea id="personaAppearanceInput" rows="2" class="w-full rounded p-2 bg-blue-100 text-blue-700"></textarea>
+        </div>
+        <div class="mb-3">
+          <label class="block text-blue-700 mb-1">人物性格</label>
+          <textarea id="personaPersonalityInput" rows="2" class="w-full rounded p-2 bg-blue-100 text-blue-700"></textarea>
+        </div>
+        <button id="savePersonaBtn" class="bg-blue-500 text-white rounded px-4 py-2 hover:bg-blue-700 transition w-full">保存</button>
+      </div>
+    </div>
+    <!-- 重命名弹窗 -->
+    <div id="renameModal" class="fixed inset-0 flex items-center justify-center modal-bg z-50 hidden">
+      <div class="glass border border-blue-200 shadow-xl p-6 rounded-lg w-80">
+        <h2 class="text-lg font-bold text-blue-700 mb-4">重命名会话</h2>
+        <input type="text" id="renameModalInput" class="w-full rounded p-2 mb-4 bg-blue-50 text-blue-700 border border-blue-200" maxlength="64" />
+        <div class="flex gap-3 justify-end">
+          <button id="renameModalCancelBtn" class="bg-blue-100 text-blue-700 px-4 py-2 rounded hover:bg-blue-200 transition">取消</button>
+          <button id="renameModalSaveBtn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700 transition">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="/static/main.js"></script>
+</body>
+</html>

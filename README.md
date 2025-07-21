@@ -11,9 +11,9 @@
 ### ⚙️ 配置说明
 ```go
 const (
-    apiKey     = "sk-66bb9b2b38214fa29fd402c4b4dd5c41"  // 替换为你的API Key
-    model      = "deepseek-chat"                        // 模型名称
-    apiBaseURL = "https://api.deepseek.com/v1/chat/completions"  // API地址
+    apiKey     = "sk-xxxxxxxxxxxxxxxxx"  // 替换为你的API Key
+    model      = "xxxxxxxxx-xxxx"                        // 模型名称
+    apiBaseURL = "https://xxxx/xxxx"  // API地址
     dsn        = "root:00000000@tcp(127.0.0.1:3306)/deepseek_chat_b?charset=utf8mb4&parseTime=True&loc=Local"  // 数据库配置
 )
 ```

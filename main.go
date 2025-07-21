@@ -19,11 +19,13 @@ import (
 )
 
 const (
-	apiKey     = "sk-66bb9b2b38214fa29fd402c4b4dd5c41"
-	model      = "deepseek-chat"
+	apiKey     = "sk-xxxxxxxx"
+	model      = "xxxxxxxx-xxxx"
 	apiBaseURL = "https://api.deepseek.com/v1/chat/completions"
 	dsn        = "root:00000000@tcp(127.0.0.1:3306)/deepseek_chat_b?charset=utf8mb4&parseTime=True&loc=Local"
 )
+
+//上述内容根据用户自身信息修改，具体请看md。
 
 var db *gorm.DB
 

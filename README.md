@@ -1,4 +1,4 @@
-# DeepSeek Chat 升级文档
+# Helios Chat 升级文档
 
 ## 版本更新 v1.2.0
 

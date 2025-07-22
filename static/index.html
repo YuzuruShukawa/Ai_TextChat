@@ -32,6 +32,7 @@
     .deleteSessBtn, .renameSessBtn { transition: background .2s, color .2s; }
     .deleteSessBtn:active, .renameSessBtn:active { background: #e0eaff; color: #2563eb; }
     .modal-bg { background: rgba(120,180,255,0.14); }
+    /* 卡片内容省略号 */
     .persona-card-row {
       white-space: nowrap;
       overflow: hidden;
@@ -47,12 +48,14 @@
       -webkit-box-orient: vertical;
       max-height: 2.8em;
     }
+    /* 人格详情弹窗内容区域滚动 */
     #personaDetailContent {
       max-height: 320px;
       overflow-y: auto;
       padding-right: 2px;
       margin-bottom: 10px;
     }
+    /* 人格卡片槽：限制高度+滚动，不显示横向滚动条 */
     #personaList {
       max-height: 70vh;
       overflow-y: auto;
@@ -63,61 +66,14 @@
     #personaList::-webkit-scrollbar { width: 6px; background: #e3ecfa; }
     #personaList::-webkit-scrollbar-thumb { background: #badcff; border-radius: 8px; }
     #personaList::-webkit-scrollbar-thumb:hover { background: #8ac4ff; }
-    .sidebar-collapsed {
-      width: 0 !important;
-      min-width: 0 !important;
-      padding: 0 !important;
-      border: none !important;
-      overflow: hidden !important;
-      transition: width 0.3s, min-width 0.3s, padding 0.3s;
-    }
-    .sidebar-toggle-btn {
-      transition: transform 0.2s;
-    }
-    .sidebar-toggle-btn.collapsed {
-      transform: rotate(180deg);
-    }
-    @media (max-width: 900px) {
-      aside.w-80 { width: 0 !important; min-width: 0 !important; padding: 0 !important; }
-    }
-    #showSidebarBtn {
-      display: none;
-      z-index: 2000 !important;
-      position: fixed;
-      top: 24px;
-      left: 12px;
-    }
-    @media (max-width: 900px) {
-      #showSidebarBtn {
-        top: 12px;
-        left: 8px;
-      }
-    }
   </style>
 </head>
 <body class="min-h-screen font-sans text-blue-800">
-  <!-- 展开历史会话侧边栏的浮动按钮 -->
-  <button id="showSidebarBtn"
-    class="fixed top-4 left-2 z-50 bg-blue-500 text-white rounded-full shadow-lg p-2 transition hover:bg-blue-700 hidden"
-    title="展开历史会话">
-    <svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 20 20">
-      <circle cx="13" cy="13" r="9" fill="#3b82f6"/>
-      <path d="M13 7l-5 5 5 5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-  </button>
-  <div class="flex h-screen max-w-7xl mx-auto relative">
+  <div class="flex h-screen max-w-7xl mx-auto">
     <!-- 左侧历史会话 -->
-    <aside id="sidebar" class="w-80 p-4 glass flex flex-col shadow-xl transition-all duration-300">
+    <aside class="w-80 p-4 glass flex flex-col shadow-xl">
       <div class="flex justify-between items-center mb-4">
-        <div class="flex items-center gap-2">
-          <h2 class="text-xl font-bold text-blue-700">历史会话</h2>
-          <!-- 折叠按钮 -->
-          <button id="toggleSidebarBtn" class="sidebar-toggle-btn ml-1 text-blue-500 hover:text-blue-700 rounded-full focus:outline-none" title="收起/展开侧边栏">
-            <svg id="toggleSidebarIcon" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 20 20">
-              <path d="M7 5l5 5-5 5"/>
-            </svg>
-          </button>
-        </div>
+        <h2 class="text-xl font-bold text-blue-700">历史会话</h2>
         <button id="newSessionBtn" class="bg-gradient-to-r from-blue-400 to-blue-600 text-white rounded px-3 py-1 hover:scale-105 transition shadow">新建</button>
       </div>
       <ul id="sessionList" class="flex-1 overflow-y-auto"></ul>

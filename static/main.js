@@ -4,17 +4,15 @@ let isLoading = false;
 let renamePollingTimer = null;
 let aiName = "AI助手";
 let aiAvatar = "/static/ai_avatar.png";
+
+// 人格相关
 let personas = [];
 let personaAvatarTemp = "/static/ai_avatar.png";
-let currentDetailPersonaId = null;
 
+// 初始化
 document.addEventListener('DOMContentLoaded', () => {
     loadSessions();
     bindUI();
-    collapseSidebar(false);
-    document.getElementById('showSidebarBtn').onclick = function() {
-        collapseSidebar(false);
-    };
 });
 
 function bindUI() {
@@ -37,11 +35,8 @@ function bindUI() {
     document.getElementById('renameModalCancelBtn').onclick = () => {
         document.getElementById('renameModal').classList.add('hidden');
     };
-    document.getElementById('toggleSidebarBtn').onclick = function () {
-        let sidebar = document.getElementById('sidebar');
-        let collapsed = sidebar.classList.contains('sidebar-collapsed');
-        collapseSidebar(!collapsed);
-    };
+
+    // 人格卡片相关
     document.getElementById('addPersonaBtn').onclick = showAddPersonaModal;
     document.getElementById('closePersonaModalBtn').onclick = closePersonaModal;
     document.getElementById('savePersonaBtn').onclick = savePersona;
@@ -58,37 +53,9 @@ function bindUI() {
             }
         }
     };
-    document.getElementById('closePersonaDetailBtn').onclick = function () {
-        document.getElementById('personaDetailModal').classList.add('hidden');
-    };
-    document.getElementById('editPersonaBtn').onclick = function() {
-        document.getElementById('personaDetailModal').classList.add('hidden');
-        showEditPersonaModal(currentDetailPersonaId);
-    };
 }
 
-function collapseSidebar(collapsed) {
-    let sidebar = document.getElementById('sidebar');
-    let btn = document.getElementById('toggleSidebarBtn');
-    let showSidebarBtn = document.getElementById('showSidebarBtn');
-    if (collapsed) {
-        sidebar.classList.add('sidebar-collapsed');
-        btn.classList.add('collapsed');
-        btn.style.display = 'none';
-        showSidebarBtn.style.display = '';
-        showSidebarBtn.classList.remove('hidden');
-        showSidebarBtn.style.zIndex = 2000;
-        setTimeout(()=>document.getElementById('messageInput').focus(), 300);
-    } else {
-        sidebar.classList.remove('sidebar-collapsed');
-        btn.classList.remove('collapsed');
-        btn.style.display = '';
-        showSidebarBtn.style.display = 'none';
-        showSidebarBtn.classList.add('hidden');
-        setTimeout(()=>document.getElementById('messageInput').focus(), 300);
-    }
-}
-
+// 加载会话列表
 async function loadSessions() {
     let res = await fetch('/api/sessions');
     sessions = await res.json();
@@ -101,6 +68,8 @@ async function loadSessions() {
         newSession();
     }
 }
+
+// 新建会话
 async function newSession() {
     let res = await fetch('/api/setup', {
         method: 'POST',
@@ -111,6 +80,8 @@ async function newSession() {
     await loadSessions();
     switchSession(data.sessionId);
 }
+
+// 会话列表渲染
 function renderSessionList() {
     const ul = document.getElementById('sessionList');
     ul.innerHTML = '';
@@ -128,6 +99,8 @@ function renderSessionList() {
         ul.appendChild(li);
     });
 }
+
+// 切换会话
 async function switchSession(sid) {
     currentSessionId = sid;
     let sess = sessions.find(s=>s.id===sid);
@@ -138,6 +111,8 @@ async function switchSession(sid) {
     renderSessionList();
     await renderMessages();
 }
+
+// 聊天消息渲染
 async function renderMessages() {
     const div = document.getElementById('chatMessages');
     div.innerHTML = '';
@@ -145,15 +120,18 @@ async function renderMessages() {
     let res = await fetch(`/api/messages?sessionId=${currentSessionId}`);
     let msgs = await res.json();
     let sess = sessions.find(s => s.id === currentSessionId);
+
     let terminated = sess?.terminated == 1 || sess?.terminated === true;
     msgs.forEach(m => {
         addMessageBubble(m.role, m.content, m.meta, sess?.ai_name, sess?.ai_avatar);
     });
+
     if (terminated) {
         const endDiv = document.createElement('div');
         endDiv.className = 'bg-pink-100 border border-pink-300 text-pink-700 p-4 rounded-xl text-center font-bold';
         endDiv.textContent = '本次会话已结束，感谢您的使用';
         div.appendChild(endDiv);
+
         document.getElementById('messageInput').disabled = true;
         document.getElementById('sendBtn').disabled = true;
         document.getElementById('terminateBtn').disabled = true;
@@ -163,6 +141,8 @@ async function renderMessages() {
         document.getElementById('terminateBtn').disabled = false;
     }
 }
+
+// 添加消息气泡
 function addMessageBubble(role, content, meta, aiNameParam, aiAvatarParam) {
     const div = document.createElement('div');
     if (role === 'assistant') {
@@ -189,10 +169,14 @@ function addMessageBubble(role, content, meta, aiNameParam, aiAvatarParam) {
     document.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
     scrollToLatest();
 }
+
+// 滚动到底部
 function scrollToLatest() {
     const div = document.getElementById('chatMessages');
     div.scrollTop = div.scrollHeight;
 }
+
+// 发送消息
 async function sendMessage() {
     if (isLoading || !currentSessionId) return;
     const input = document.getElementById('messageInput');
@@ -203,6 +187,7 @@ async function sendMessage() {
     addMessageBubble('user', message, null);
     addMessageBubble('assistant', '正在思考中...', null, aiName, aiAvatar);
     scrollToLatest();
+
     try {
         const res = await fetch('/api/chat', {
             method: 'POST',
@@ -211,20 +196,26 @@ async function sendMessage() {
         });
         const data = await res.json();
         removeLoadingBubble();
+
         if (data.terminated) {
+            // 展示对话总结
             addMessageBubble('assistant', data.summary, '对话总结');
             const div = document.createElement('div');
             div.className = 'bg-pink-100 border border-pink-300 text-pink-700 p-4 rounded-xl text-center font-bold';
             div.textContent = data.endMessage || '本次会话已结束，感谢您的使用';
             document.getElementById('chatMessages').appendChild(div);
+
             document.getElementById('messageInput').disabled = true;
             document.getElementById('sendBtn').disabled = true;
             document.getElementById('terminateBtn').disabled = true;
+
+            // 自动刷新会话名
             await loadSessions();
             let sess = sessions.find(s => s.id === currentSessionId);
             document.getElementById('currentSessionName').textContent = data.newTitle || (sess ? sess.name : '');
         } else if (res.ok || data.message) {
             addMessageBubble('assistant', data.message, '响应时间: ' + data.elapsedTime, data.aiName, data.aiAvatar);
+
             let sess = sessions.find(s => s.id === currentSessionId);
             if (sess && sess.name === "新对话" && !renamePollingTimer) {
                 startRenamePolling();
@@ -239,6 +230,8 @@ async function sendMessage() {
         isLoading = false;
     }
 }
+
+// 自动轮询刷新会话标题
 function startRenamePolling() {
     let pollingCount = 0;
     renamePollingTimer = setInterval(async () => {
@@ -256,6 +249,8 @@ function startRenamePolling() {
         }
     }, 3000);
 }
+
+// 终止会话
 async function terminateSession() {
     if (!currentSessionId) return;
     if (!confirm('确定要终止本次会话吗？')) return;
@@ -273,6 +268,8 @@ async function terminateSession() {
         showError('终止失败！');
     }
 }
+
+// 移除“正在思考”气泡
 function removeLoadingBubble() {
     const bubbles = document.querySelectorAll('#chatMessages > div');
     if (bubbles.length) {
@@ -280,6 +277,8 @@ function removeLoadingBubble() {
         if (last.textContent.includes("正在思考")) last.remove();
     }
 }
+
+// 错误提示
 function showError(msg) {
     const div = document.createElement('div');
     div.className = 'bg-pink-200 text-pink-800 p-4 rounded-xl mt-2 shadow-xl animate-shake border border-pink-300';
@@ -287,6 +286,8 @@ function showError(msg) {
     document.getElementById('chatMessages').appendChild(div);
     scrollToLatest();
 }
+
+// 删除会话及历史消息
 async function deleteSession(sessId) {
     if (!confirm('确定要删除该历史会话及所有消息吗？此操作不可恢复！')) return;
     let res = await fetch('/api/session/delete', {
@@ -308,6 +309,8 @@ async function deleteSession(sessId) {
         showError('删除失败！');
     }
 }
+
+// 打开重命名弹窗
 function openRenameModal(sessId) {
     const sess = sessions.find(s=>s.id===sessId);
     document.getElementById('renameModal').classList.remove('hidden');
@@ -315,6 +318,8 @@ function openRenameModal(sessId) {
     document.getElementById('renameModal').dataset.sessId = sessId;
     document.getElementById('renameModalInput').focus();
 }
+
+// 重命名确认
 async function renameSessionConfirm() {
     const sessId = document.getElementById('renameModal').dataset.sessId;
     const newName = document.getElementById('renameModalInput').value.trim();
@@ -333,18 +338,23 @@ async function renameSessionConfirm() {
         showError('重命名失败！');
     }
 }
+
+// HTML转义（防XSS）
 function escapeHtml(s) {
     return s.replace(/[&<>"']/g, function(m) {
         return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];
     });
 }
 
-// ------------ 人格管理 -------------
+// ------------- 人格卡片相关 --------------
+
+// 加载人格卡片
 async function loadPersonas() {
     let res = await fetch('/api/personas');
     personas = await res.json();
     renderPersonaList();
 }
+
 function renderPersonaList() {
     const box = document.getElementById('personaList');
     box.innerHTML = '';
@@ -366,27 +376,8 @@ function renderPersonaList() {
         box.appendChild(card);
     });
 }
-async function showPersonaDetail(personaId) {
-    currentDetailPersonaId = personaId;
-    let p = personas.find(x=>x.id===personaId);
-    if (!p) {
-        let res = await fetch('/api/persona/' + personaId);
-        p = await res.json();
-    }
-    document.getElementById('personaDetailContent').innerHTML = `
-        <div class="flex flex-col items-center mb-3">
-          <img src="${p.avatar||'/static/ai_avatar.png'}" class="w-20 h-20 rounded-full border border-blue-200 object-cover mb-2" />
-          <div class="font-bold text-blue-800 text-lg">${escapeHtml(p.name)}</div>
-        </div>
-        <div class="mb-2"><span class="font-bold text-blue-700">身份：</span>${escapeHtml(p.identity||'')}</div>
-        <div class="mb-2"><span class="font-bold text-blue-700">外貌：</span>${escapeHtml(p.appearance||'')}</div>
-        <div class="mb-2"><span class="font-bold text-blue-700">性格：</span>${escapeHtml(p.personality||'')}</div>
-    `;
-    document.getElementById('personaDetailModal').classList.remove('hidden');
-}
-function closePersonaModal() {
-    document.getElementById('personaModal').classList.add('hidden');
-}
+
+
 function showAddPersonaModal() {
     personaAvatarTemp = "/static/ai_avatar.png";
     document.getElementById('personaModalTitle').textContent = '新增人格';
@@ -398,6 +389,7 @@ function showAddPersonaModal() {
     document.getElementById('personaPersonalityInput').value = '';
     document.getElementById('personaModal').classList.remove('hidden');
 }
+
 async function showEditPersonaModal(id) {
     let p = personas.find(x=>x.id===id);
     if (!p) return;
@@ -411,6 +403,11 @@ async function showEditPersonaModal(id) {
     document.getElementById('personaPersonalityInput').value = p.personality||'';
     document.getElementById('personaModal').classList.remove('hidden');
 }
+
+function closePersonaModal() {
+    document.getElementById('personaModal').classList.add('hidden');
+}
+
 async function savePersona() {
     let id = document.getElementById('personaIdInput').value;
     let data = {
@@ -435,6 +432,7 @@ async function savePersona() {
         showError('保存失败');
     }
 }
+
 async function deletePersonaCard(id) {
     if (!confirm('确定要删除该人格吗？')) return;
     let res = await fetch('/api/persona/' + id, { method: 'DELETE' });
@@ -445,6 +443,8 @@ async function deletePersonaCard(id) {
         showError('删除失败');
     }
 }
+
+// 当前会话切换到指定人格
 async function usePersonaForCurrentSession(personaId) {
     if (!currentSessionId) return showError('请先选择会话');
     let res = await fetch('/api/session/use_persona', {
@@ -460,4 +460,59 @@ async function usePersonaForCurrentSession(personaId) {
     } else {
         showError('切换人格失败');
     }
+}
+
+let currentDetailPersonaId = null;
+async function showPersonaDetail(personaId) {
+    currentDetailPersonaId = personaId;
+    // 可选用 getPersonas 过滤，也可以单独请求 /api/persona/:id
+    let p = personas.find(x=>x.id===personaId);
+    if (!p) {
+        // 保险起见用接口查一次
+        let res = await fetch('/api/persona/' + personaId);
+        p = await res.json();
+    }
+    document.getElementById('personaDetailContent').innerHTML = `
+        <div class="flex flex-col items-center mb-3">
+          <img src="${p.avatar||'/static/ai_avatar.png'}" class="w-20 h-20 rounded-full border border-blue-200 object-cover mb-2" />
+          <div class="font-bold text-blue-800 text-lg">${escapeHtml(p.name)}</div>
+        </div>
+        <div class="mb-2"><span class="font-bold text-blue-700">身份：</span>${escapeHtml(p.identity||'')}</div>
+        <div class="mb-2"><span class="font-bold text-blue-700">外貌：</span>${escapeHtml(p.appearance||'')}</div>
+        <div class="mb-2"><span class="font-bold text-blue-700">性格：</span>${escapeHtml(p.personality||'')}</div>
+    `;
+    document.getElementById('personaDetailModal').classList.remove('hidden');
+}
+
+document.getElementById('closePersonaDetailBtn').onclick = function () {
+    document.getElementById('personaDetailModal').classList.add('hidden');
+};
+
+// “详情”弹窗内“修改人格”按钮
+document.getElementById('editPersonaBtn').onclick = function() {
+    document.getElementById('personaDetailModal').classList.add('hidden');
+    showEditPersonaModal(currentDetailPersonaId);
+};
+
+// 渲染人格卡片
+function renderPersonaList() {
+    const box = document.getElementById('personaList');
+    box.innerHTML = '';
+    personas.forEach(p => {
+        let card = document.createElement('div');
+        card.className = 'glass shadow border flex gap-3 p-3 rounded-lg items-center cursor-pointer relative group';
+        card.onclick = () => showPersonaDetail(p.id);
+        card.innerHTML = `
+            <img src="${p.avatar||'/static/ai_avatar.png'}" class="w-14 h-14 rounded-full border border-blue-200 object-cover" />
+            <div class="flex-1 min-w-0">
+              <div class="font-bold text-blue-800 persona-card-row">${escapeHtml(p.name)}</div>
+              <div class="text-xs text-blue-500 persona-card-row">${escapeHtml(p.identity||'')}</div>
+              <div class="text-xs text-blue-400 persona-card-row multiline">${escapeHtml(p.personality||'')}</div>
+            </div>
+            <button class="absolute top-2 right-2 text-pink-400 hover:text-pink-700 text-lg hidden group-hover:block" onclick="event.stopPropagation();deletePersonaCard(${p.id})">🗑️</button>
+            <button class="absolute top-2 right-10 text-blue-400 hover:text-blue-700 text-lg hidden group-hover:block" onclick="event.stopPropagation();usePersonaForCurrentSession(${p.id})">切换</button>
+            <button class="absolute bottom-2 right-2 bg-blue-100 text-blue-700 text-xs rounded px-2 py-1 hover:bg-blue-200 transition hidden group-hover:block" onclick="event.stopPropagation();showPersonaDetail(${p.id})">详情</button>
+        `;
+        box.appendChild(card);
+    });
 }
